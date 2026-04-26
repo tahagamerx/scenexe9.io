@@ -1,45 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Scenexe Clone - Ultra Pro</title>
+    <title>Scenexe2 - FOV & Sniper Update</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', sans-serif; user-select: none; }
         canvas { display: block; cursor: crosshair; }
-        #ui { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: white; pointer-events: none; text-align: center; width: 300px; }
-        .lvl-bar { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 5px; margin-top: 5px; }
-        #xp-fill { width: 0%; height: 100%; background: #00adef; }
-        #stats { position: absolute; top: 10px; left: 10px; color: white; font-weight: bold; font-size: 20px; }
+        
+        #menu-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .menu-btn { background: #333; color: white; border: 2px solid #555; padding: 15px 40px; margin: 10px; cursor: pointer; font-size: 20px; border-radius: 10px; width: 280px; transition: 0.3s; }
+        .menu-btn:hover { background: #00adef; transform: translateY(-3px); }
+
+        #ui { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 450px; text-align: center; pointer-events: none; }
+        .lvl-bar { width: 100%; height: 20px; background: rgba(0,0,0,0.7); border: 2px solid #fff; border-radius: 4px; overflow: hidden; }
+        #xp-fill { width: 0%; height: 100%; background: #00adef; transition: width 0.3s; }
+        #stats { color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 4px #000; margin-bottom: 8px; }
+        
+        #top-info { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 25px; border-radius: 5px; color: white; font-weight: bold; font-size: 22px; text-align: center; border: 2px solid #00adef; }
+        #hp-bar-container { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); width: 250px; height: 12px; background: #000; border: 2px solid #fff; }
+        #hp-fill { width: 100%; height: 100%; background: #2ecc71; }
     </style>
 </head>
 <body>
-    <div id="stats">Score: <span id="score">0</span> | Level: <span id="lvl">1</span></div>
-    <div id="ui">
-        <div class="lvl-bar"><div id="xp-fill"></div></div>
+    <div id="menu-overlay">
+        <h1 style="color:white">CHOOSE YOUR START</h1>
+        <button class="menu-btn" onclick="startGame('FFA', 'Basic')">FFA (Basic Tank)</button>
+        <button class="menu-btn" onclick="startGame('FFA', 'Sniper')">FFA (Sniper Tank - High FOV)</button>
+        <button class="menu-btn" onclick="startGame('Team2', 'Basic')">Team 2</button>
     </div>
+
+    <div id="top-info"><span id="dim-name">FFA</span><br><span id="tank-type" style="font-size:14px; color:#aaa"></span></div>
+    <div id="hp-bar-container"><div id="hp-fill"></div></div>
+    <div id="ui"><div id="stats">LVL <span id="lvl">1</span> | SCORE <span id="score">0</span></div><div class="lvl-bar"><div id="xp-fill"></div></div></div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
-        let camera = { x: 0, y: 0 };
-        let player = { x: 0, y: 0, angle: 0, score: 0, xp: 0, nextLvl: 100, lvl: 1, speed: 5, size: 25 };
-        let keys = {};
-        let bullets = [];
-        let shapes = [];
-
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Generate initial shapes in a huge world
-        for(let i=0; i<200; i++) {
-            shapes.push({
-                x: (Math.random() - 0.5) * 4000,
-                y: (Math.random() - 0.5) * 4000,
-                size: 20,
-                color: '#ffe869',
-                hp: 20
-            });
+        let gameRunning = false;
+        let currentFOV = 1;
+        let arenaSize = 4000;
+
+        let player = { 
+            x: 0, y: 0, angle: 0, hp: 100, maxHp: 100, score: 0, xp: 0, nextLvl: 100, lvl: 1, 
+            size: 25, speed: 6, cooldown: 0, color: '#00adef', type: 'Basic'
+        };
+
+        let keys = {}; let bullets = []; let shapes = []; let portals = []; let bases = [];
+
+        const SHAPES_DB = [
+            { sides: 3, color: '#ffe869', size: 20, hp: 15, xp: 10 },
+            { sides: 4, color: '#ff8a8a', size: 20, hp: 25, xp: 25 },
+            { sides: 5, color: '#768dfc', size: 40, hp: 80, xp: 100 },
+            { sides: 12, color: '#3d2e4f', size: 600, hp: 30000, xp: 50000 }, // Dodecagon
+            { sides: 3, color: '#555', size: 1800, hp: 150000, xp: 200000, isBoss: true } // Tetrahedron
+        ];
+
+        function startGame(mode, type) {
+            document.getElementById('menu-overlay').style.display = 'none';
+            player.type = type;
+            document.getElementById('tank-type').innerText = "Class: " + type;
+            gameRunning = true;
+            loadDimension(mode);
+        }
+
+        function loadDimension(dimName) {
+            shapes = []; bullets = []; portals = [];
+            if(dimName === 'FFA') {
+                arenaSize = 4000;
+                portals.push({x: 0, y: -2000, target: 'Crossroad', size: 80, label: 'CROSSROAD'});
+            }
+            // Spawn 300 shapes
+            for(let i=0; i<300; i++) {
+                let s = SHAPES_DB[Math.random() > 0.98 ? 2 : (Math.random() > 0.5 ? 1 : 0)];
+                shapes.push({ x: (Math.random()-0.5)*arenaSize*1.8, y: (Math.random()-0.5)*arenaSize*1.8, angle: Math.random()*6, spin: 0.02, ...s });
+            }
+            // Add one Boss
+            shapes.push({ x: 1500, y: 1500, angle: 0, spin: 0.005, ...SHAPES_DB[4] });
         }
 
         window.onkeydown = (e) => keys[e.key.toLowerCase()] = true;
@@ -47,100 +87,91 @@
         window.onmousemove = (e) => {
             player.angle = Math.atan2(e.clientY - canvas.height/2, e.clientX - canvas.width/2);
         };
-        window.onclick = () => {
-            bullets.push({
-                x: player.x, y: player.y,
-                angle: player.angle, speed: 12, life: 60
-            });
-        };
 
         function update() {
-            // Movement Logic (WASD)
+            if(!gameRunning) return;
             if(keys['w']) player.y -= player.speed;
             if(keys['s']) player.y += player.speed;
             if(keys['a']) player.x -= player.speed;
             if(keys['d']) player.x += player.speed;
 
-            // Camera follows player
-            camera.x = player.x - canvas.width/2;
-            camera.y = player.y - canvas.height/2;
+            // --- DYNAMIC FOV LOGIC ---
+            // Base FOV: Basic = 1.0, Sniper = 0.7 (Smaller number means more view)
+            let baseFOV = (player.type === 'Sniper') ? 0.65 : 0.9;
+            // Level factor: Level barhne se FOV mazeed expand hoga
+            let levelFactor = player.lvl * 0.005;
+            let targetFOV = baseFOV - levelFactor;
+            if(targetFOV < 0.3) targetFOV = 0.3; // Limit
+            
+            currentFOV += (targetFOV - currentFOV) * 0.05; // Smooth transition
 
-            // Bullets update
+            // Bullet logic
+            if(keys[' '] || window.onmousedown) { /* shooting handled by click */ }
             bullets.forEach((b, i) => {
-                b.x += Math.cos(b.angle) * b.speed;
-                b.y += Math.sin(b.angle) * b.speed;
-                b.life--;
-                if(b.life <= 0) bullets.splice(i, 1);
-
-                // Collision
+                b.x += Math.cos(b.angle)*b.speed; b.y += Math.sin(b.angle)*b.speed;
                 shapes.forEach((s, si) => {
-                    if(Math.hypot(b.x - s.x, b.y - s.y) < s.size) {
-                        s.hp -= 10;
-                        bullets.splice(i, 1);
-                        if(s.hp <= 0) {
-                            player.score += 10;
-                            player.xp += 20;
-                            shapes.splice(si, 1);
-                            updateUI();
-                        }
+                    if(Math.hypot(b.x-s.x, b.y-s.y) < s.size) {
+                        s.hp -= 10; bullets.splice(i,1);
+                        if(s.hp <= 0) { player.score += s.xp; player.xp += s.xp; shapes.splice(si,1); checkLevel(); }
                     }
                 });
             });
         }
 
-        function updateUI() {
+        function checkLevel() {
             if(player.xp >= player.nextLvl) {
-                player.lvl++;
-                player.xp = 0;
-                player.nextLvl += 50;
+                player.lvl++; player.xp = 0; player.nextLvl *= 1.5;
+                document.getElementById('lvl').innerText = player.lvl;
+                document.getElementById('score').innerText = player.score;
             }
-            document.getElementById('score').innerText = player.score;
-            document.getElementById('lvl').innerText = player.lvl;
-            document.getElementById('xp-fill').style.width = (player.xp / player.nextLvl * 100) + "%";
+            document.getElementById('xp-fill').style.width = (player.xp/player.nextLvl*100) + "%";
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(-camera.x, -camera.y);
+            if(!gameRunning) return;
 
-            // Draw Grid (Makes it feel like real Scenexe)
-            ctx.strokeStyle = '#252525';
-            ctx.lineWidth = 2;
-            for(let i=-2000; i<=2000; i+=50) {
-                ctx.beginPath(); ctx.moveTo(i, -2000); ctx.lineTo(i, 2000); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(-2000, i); ctx.lineTo(2000, i); ctx.stroke();
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.scale(currentFOV, currentFOV); // FOV is applied here
+            ctx.translate(-player.x, -player.y);
+
+            // Grid
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+            for(let i=-arenaSize; i<=arenaSize; i+=100) {
+                ctx.beginPath(); ctx.moveTo(i, -arenaSize); ctx.lineTo(i, arenaSize); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-arenaSize, i); ctx.lineTo(arenaSize, i); ctx.stroke();
             }
 
-            // Draw Shapes
+            // Shapes
             shapes.forEach(s => {
-                ctx.fillStyle = s.color;
-                ctx.strokeStyle = '#998a3e';
-                ctx.lineWidth = 3;
-                ctx.fillRect(s.x - s.size/2, s.y - s.size/2, s.size, s.size);
-                ctx.strokeRect(s.x - s.size/2, s.y - s.size/2, s.size, s.size);
+                ctx.fillStyle = s.color; ctx.beginPath();
+                for(let i=0; i<s.sides; i++){
+                    let a = s.angle + (i*Math.PI*2)/s.sides;
+                    ctx.lineTo(s.x + Math.cos(a)*s.size, s.y + Math.sin(a)*s.size);
+                }
+                ctx.closePath(); ctx.fill(); ctx.stroke();
             });
 
-            // Draw Bullets
-            ctx.fillStyle = '#00adef';
-            bullets.forEach(b => {
-                ctx.beginPath(); ctx.arc(b.x, b.y, 8, 0, Math.PI*2); ctx.fill();
-            });
-
-            // Draw Player
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            ctx.rotate(player.angle);
-            ctx.fillStyle = '#999'; ctx.fillRect(5, -12, 35, 24); // Cannon
-            ctx.fillStyle = '#00adef'; 
-            ctx.beginPath(); ctx.arc(0, 0, player.size, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = '#0083b5'; ctx.lineWidth = 4; ctx.stroke();
+            // Player
+            ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle);
+            ctx.fillStyle = '#999'; 
+            // Barrel length changes for Sniper
+            let barrelLen = (player.type === 'Sniper') ? 60 : 40;
+            ctx.fillRect(0, -10, barrelLen, 20);
+            ctx.fillStyle = player.color; ctx.beginPath(); ctx.arc(0,0,player.size,0,7); ctx.fill(); ctx.stroke();
             ctx.restore();
 
             ctx.restore();
             update();
             requestAnimationFrame(draw);
         }
+
+        window.onmousedown = () => {
+            if(!gameRunning) return;
+            bullets.push({x: player.x, y: player.y, angle: player.angle, speed: 15, life: 100});
+        };
+
         draw();
     </script>
 </body>
