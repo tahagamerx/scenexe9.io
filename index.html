@@ -1,50 +1,286 @@
-# scenexe2.io
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scenexe2.io</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Scenexe2 | Fixed Shape Health & Stats</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap');
+        body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Ubuntu', sans-serif; color: #000; user-select: none; }
+        canvas { display: block; }
+
+        /* UI Panels - Hidden by default */
+        .ui-panel { 
+            position: absolute; bottom: 25px; width: 280px; z-index: 100; 
+            pointer-events: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; transform: translateY(30px);
+        }
+        /* Visible class when points > 0 */
+        .ui-visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+        #left-ui { left: 25px; }
+        #right-ui { right: 25px; }
+
+        .stat-bar { 
+            background: rgba(0, 0, 0, 0.85); border: 2px solid #333; border-radius: 30px;
+            margin: 6px 0; padding: 8px 18px; display: flex; justify-content: space-between;
+            align-items: center; cursor: pointer; transition: 0.2s; color: white;
+        }
+        .stat-bar:hover { border-color: #00adef; background: #000; transform: scale(1.03); }
+        .stat-maxed { border-color: #ffd700 !important; cursor: default; }
+
+        .stat-label { display: flex; align-items: center; gap: 10px; }
+        .stat-name { font-weight: 700; font-size: 14px; }
+        .stat-key { color: #666; font-size: 11px; font-weight: bold; }
+        .stat-val { color: #00adef; font-weight: 900; font-size: 16px; }
+
+        #central-hud { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 500px; text-align: center; pointer-events: none;
+        }
+        .name-tag { font-size: 26px; font-weight: 900; margin-bottom: 5px; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .bar-wrap { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border: 2px solid #222; border-radius: 10px; overflow: hidden; }
+        #xp-fill { width: 0%; height: 100%; background: #00adef; transition: width 0.2s; }
+        .score-info { margin-top: 8px; font-size: 13px; font-weight: 700; color: #fff; }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Welcome to Scenexe2.io</h1>
-        <nav>
-            <ul>
-                <li><a href="#about">About</a></li>
-                <li><a href="#services">Services</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <section id="about">
-            <h2>About Us</h2>
-            <p>Scenexe2.io is dedicated to providing the best services in the industry.</p>
-        </section>
-        <section id="services">
-            <h2>Our Services</h2>
-            <ul>
-                <li>Service 1</li>
-                <li>Service 2</li>
-                <li>Service 3</li>
-            </ul>
-        </section>
-        <section id="contact">
-            <h2>Contact Us</h2>
-            <form action="submit_form.php" method="post">
-                <label for="name">Name:</label>
-                <input type="text" id="name" name="name" required>
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-                <input type="submit" value="Submit">
-            </form>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2023 Scenexe2.io. All rights reserved.</p>
-    </footer>
+
+    <div id="left-ui" class="ui-panel">
+        <div class="stat-bar" id="stat-reload" onclick="lvlUp('reload')"><div class="stat-label"><span class="stat-key">[1]</span><span class="stat-name">Reload</span></div><span class="stat-val" id="val-reload">0</span></div>
+        <div class="stat-bar" id="stat-damage" onclick="lvlUp('damage')"><div class="stat-label"><span class="stat-key">[2]</span><span class="stat-name">Damage</span></div><span class="stat-val" id="val-damage">0</span></div>
+        <div class="stat-bar" id="stat-bSpeed" onclick="lvlUp('bSpeed')"><div class="stat-label"><span class="stat-key">[3]</span><span class="stat-name">Bullet Speed</span></div><span class="stat-val" id="val-bSpeed">0</span></div>
+        <div class="stat-bar" id="stat-bHealth" onclick="lvlUp('bHealth')"><div class="stat-label"><span class="stat-key">[4]</span><span class="stat-name">Bullet Health</span></div><span class="stat-val" id="val-bHealth">0</span></div>
+    </div>
+
+    <div id="right-ui" class="ui-panel">
+        <div class="stat-bar" id="stat-maxHP" onclick="lvlUp('maxHP')"><span class="stat-val" id="val-maxHP">0</span><div class="stat-label"><span class="stat-name">Max Health</span><span class="stat-key">[5]</span></div></div>
+        <div class="stat-bar" id="stat-regen" onclick="lvlUp('regen')"><span class="stat-val" id="val-regen">0</span><div class="stat-label"><span class="stat-name">Regeneration</span><span class="stat-key">[6]</span></div></div>
+        <div class="stat-bar" id="stat-bodyDmg" onclick="lvlUp('bodyDmg')"><span class="stat-val" id="val-bodyDmg">0</span><div class="stat-label"><span class="stat-name">Body Damage</span><span class="stat-key">[7]</span></div></div>
+        <div class="stat-bar" id="stat-speed" onclick="lvlUp('speed')"><span class="stat-val" id="val-speed">0</span><div class="stat-label"><span class="stat-name">Movement</span><span class="stat-key">[8]</span></div></div>
+    </div>
+
+    <div id="central-hud">
+        <div class="name-tag">Taha</div>
+        <div class="bar-wrap"><div id="xp-fill"></div></div>
+        <div class="score-info">SCORE: <span id="ui-score">0</span> | LEVEL: <span id="ui-level">1</span> | POINTS: <span id="ui-pts">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let shapes = [], bullets = [], keys = {}, camScale = 1;
+
+        const MAP_SIZE = 10000;
+        const MAP_HALF = MAP_SIZE / 2;
+
+        let p = {
+            x: 0, y: 0, vx: 0, vy: 0, angle: 0,
+            lvl: 1, xp: 0, next: 100, score: 0, pts: 0,
+            hp: 100, maxHP: 100,
+            stats: { reload:0, damage:0, bSpeed:0, bHealth:0, maxHP:0, regen:0, bodyDmg:0, speed:0 },
+            barrels: 1, bWidth: 26, bLen: 50, color: '#00adef',
+            cooldown: 0, radius: 25 
+        };
+
+        function init() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            for(let i=0; i<300; i++) spawnShape();
+            updateVisibility();
+            requestAnimationFrame(loop);
+        }
+
+        function spawnShape() {
+            let r = Math.random();
+            let sides = (r > 0.98) ? 6 : (r > 0.9) ? 5 : (r > 0.7) ? 4 : 3;
+            shapes.push({
+                x: (Math.random()-0.5) * (MAP_SIZE - 500), 
+                y: (Math.random()-0.5) * (MAP_SIZE - 500),
+                size: 22 + (sides*6), sides: sides, 
+                hp: sides*50, maxHP: sides*50, xp: sides*100,
+                color: (sides==6?'#ff00ff':sides==5?'#768dfc':sides==4?'#ff8a8a':'#ffe869'),
+                angle: Math.random()*Math.PI, spin: (Math.random()-0.5)*0.02
+            });
+        }
+
+        function lvlUp(s) {
+            if(p.pts > 0 && p.stats[s] < 15) {
+                p.stats[s]++; p.pts--;
+                const valEl = document.getElementById(`val-${s}`);
+                valEl.innerText = p.stats[s];
+                if(p.stats[s] >= 15) {
+                    valEl.innerText = "MAX";
+                    document.getElementById(`stat-${s}`).classList.add('stat-maxed');
+                }
+                if(s === 'maxHP') { p.maxHP += 50; p.hp += 50; }
+                updateVisibility();
+            }
+        }
+
+        function updateVisibility() {
+            const panels = document.querySelectorAll('.ui-panel');
+            if(p.pts > 0) {
+                panels.forEach(pan => pan.classList.add('ui-visible'));
+            } else {
+                panels.forEach(pan => pan.classList.remove('ui-visible'));
+            }
+            document.getElementById('ui-pts').innerText = p.pts;
+            document.getElementById('ui-level').innerText = p.lvl;
+        }
+
+        function grantXP(amount) {
+            p.score += amount; p.xp += amount;
+            if(p.xp >= p.next) {
+                p.lvl++; p.pts++; p.xp = 0; p.next = Math.floor(p.next * 1.3);
+                updateVisibility();
+            }
+            document.getElementById('ui-score').innerText = Math.floor(p.score);
+            document.getElementById('xp-fill').style.width = (p.xp/p.next*100) + "%";
+        }
+
+        window.onkeydown = e => {
+            keys[e.key.toLowerCase()] = true;
+            const keyMap = {'1':'reload','2':'damage','3':'bSpeed','4':'bHealth','5':'maxHP','6':'regen','7':'bodyDmg','8':'speed'};
+            if(keyMap[e.key]) lvlUp(keyMap[e.key]);
+        };
+        window.onkeyup = e => keys[e.key.toLowerCase()] = false;
+        window.onmousemove = e => p.angle = Math.atan2(e.clientY - canvas.height/2, e.clientX - canvas.width/2);
+
+        function update() {
+            let moveSpeed = 0.6 + (p.stats.speed * 0.1);
+            if(keys['w']) p.vy -= moveSpeed; if(keys['s']) p.vy += moveSpeed;
+            if(keys['a']) p.vx -= moveSpeed; if(keys['d']) p.vx += moveSpeed;
+            p.vx *= 0.92; p.vy *= 0.92; p.x += p.vx; p.y += p.vy;
+
+            // Map Bounds
+            if(p.x < -MAP_HALF + p.radius) p.x = -MAP_HALF + p.radius;
+            if(p.x > MAP_HALF - p.radius) p.x = MAP_HALF - p.radius;
+            if(p.y < -MAP_HALF + p.radius) p.y = -MAP_HALF + p.radius;
+            if(p.y > MAP_HALF - p.radius) p.y = MAP_HALF - p.radius;
+
+            if(p.hp < p.maxHP) p.hp += 0.02 + (p.stats.regen * 0.05);
+
+            // Shooting
+            if(p.cooldown <= 0) {
+                bullets.push({
+                    x: p.x + Math.cos(p.angle)*p.bLen, 
+                    y: p.y + Math.sin(p.angle)*p.bLen, 
+                    angle: p.angle, 
+                    life: 100 + (p.stats.bHealth * 10),
+                    dmg: 20 + (p.stats.damage * 8)
+                });
+                p.cooldown = 25 - (p.stats.reload * 1.3);
+            }
+            p.cooldown--;
+
+            // Bullet Logic
+            bullets.forEach((b, bi) => {
+                let bVel = 14 + (p.stats.bSpeed * 1.5);
+                b.x += Math.cos(b.angle) * bVel;
+                b.y += Math.sin(b.angle) * bVel;
+                
+                shapes.forEach((s, si) => {
+                    let d = Math.hypot(b.x - s.x, b.y - s.y);
+                    if(d < s.size + 10) {
+                        s.hp -= b.dmg;
+                        b.life = 0;
+                        if(s.hp <= 0) { grantXP(s.xp); shapes.splice(si, 1); spawnShape(); }
+                    }
+                });
+                if(b.life-- <= 0) bullets.splice(bi, 1);
+            });
+
+            // Player vs Shape Collision
+            shapes.forEach((s, si) => {
+                let d = Math.hypot(p.x - s.x, p.y - s.y);
+                if(d < p.radius + s.size) {
+                    p.hp -= 1;
+                    s.hp -= (2 + p.stats.bodyDmg);
+                    if(s.hp <= 0) { grantXP(s.xp); shapes.splice(si, 1); spawnShape(); }
+                }
+            });
+        }
+
+        function loop() {
+            update();
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.scale(0.8, 0.8);
+            ctx.translate(-p.x, -p.y);
+
+            // 1. Map White Area
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(-MAP_HALF, -MAP_HALF, MAP_SIZE, MAP_SIZE);
+
+            // 2. Grid Lines
+            ctx.strokeStyle = '#eeeeee'; ctx.lineWidth = 4;
+            ctx.beginPath();
+            for(let i = -MAP_HALF; i <= MAP_HALF; i += 150) {
+                ctx.moveTo(i, -MAP_HALF); ctx.lineTo(i, MAP_HALF);
+                ctx.moveTo(-MAP_HALF, i); ctx.lineTo(MAP_HALF, i);
+            }
+            ctx.stroke();
+
+            // 3. Black Border Line
+            ctx.strokeStyle = '#000000'; ctx.lineWidth = 15;
+            ctx.strokeRect(-MAP_HALF, -MAP_HALF, MAP_SIZE, MAP_SIZE);
+
+            // 4. Draw Shapes & Their Health Bars
+            shapes.forEach(s => {
+                ctx.save();
+                ctx.translate(s.x, s.y);
+                ctx.rotate(s.angle);
+                ctx.fillStyle = s.color; ctx.strokeStyle = '#000'; ctx.lineWidth = 5;
+                ctx.beginPath();
+                for(let i=0; i<s.sides; i++) {
+                    ctx.lineTo(Math.cos(i*Math.PI*2/s.sides)*s.size, Math.sin(i*Math.PI*2/s.sides)*s.size);
+                }
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.restore();
+                s.angle += s.spin;
+
+                // FIXED SHAPE HEALTH BAR
+                if(s.hp < s.maxHP) {
+                    let bw = s.size * 1.6;
+                    let bh = 7;
+                    // Background
+                    ctx.fillStyle = '#444';
+                    ctx.fillRect(s.x - bw/2, s.y + s.size + 10, bw, bh);
+                    // Fill (Red)
+                    ctx.fillStyle = '#ff4444';
+                    let healthRatio = Math.max(0, s.hp / s.maxHP);
+                    ctx.fillRect(s.x - bw/2, s.y + s.size + 10, bw * healthRatio, bh);
+                }
+            });
+
+            // 5. Bullets
+            ctx.fillStyle = p.color; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+            bullets.forEach(b => {
+                ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            });
+
+            // 6. Tank
+            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+            ctx.fillStyle = '#999'; ctx.strokeStyle = '#000'; ctx.lineWidth = 5;
+            ctx.fillRect(0, -p.bWidth/2, p.bLen, p.bWidth);
+            ctx.strokeRect(0, -p.bWidth/2, p.bLen, p.bWidth);
+            ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(0,0,p.radius,0,Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+
+            // 7. Player Health
+            if(p.hp < p.maxHP) {
+                ctx.fillStyle = '#444'; ctx.fillRect(p.x - 30, p.y + p.radius + 15, 60, 8);
+                ctx.fillStyle = '#2ecc71'; ctx.fillRect(p.x - 30, p.y + p.radius + 15, 60 * (p.hp/p.maxHP), 8);
+            }
+
+            ctx.restore();
+            requestAnimationFrame(loop);
+        }
+        init();
+    </script>
 </body>
 </html>
