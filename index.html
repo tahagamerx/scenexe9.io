@@ -2,61 +2,66 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Scenexe2 | Professional Lobby & Solid Physics</title>
+    <title>Scenexe2 | Professional Build</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap');
+        
         body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: 'Ubuntu', sans-serif; color: white; user-select: none; }
         canvas { display: none; background: #fff; cursor: crosshair; }
 
-        /* --- LOBBY STYLES --- */
+        /* --- LOBBY SYSTEM --- */
         #lobby {
             position: absolute; width: 100%; height: 100%; 
             background: radial-gradient(circle, #2c3e50, #000);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000;
         }
         .lobby-box {
-            background: rgba(0, 0, 0, 0.85); padding: 40px; border-radius: 25px;
+            background: rgba(0, 0, 0, 0.9); padding: 40px; border-radius: 25px;
             border: 4px solid #00adef; text-align: center; width: 380px;
-            box-shadow: 0 0 40px rgba(0, 173, 239, 0.3);
+            box-shadow: 0 0 50px rgba(0, 173, 239, 0.3);
         }
-        h1 { font-size: 50px; margin-bottom: 25px; color: #00adef; letter-spacing: 4px; text-shadow: 0 0 15px rgba(0,173,239,0.5); }
+        h1 { font-size: 50px; margin: 0 0 25px 0; color: #00adef; letter-spacing: 5px; text-shadow: 0 0 20px rgba(0,173,239,0.5); }
+        
         .input-group { margin: 15px 0; text-align: left; }
-        label { font-size: 12px; color: #888; text-transform: uppercase; margin-left: 5px; }
+        label { font-size: 11px; color: #00adef; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        
         input, select {
-            width: 100%; padding: 14px; margin-top: 5px; border-radius: 12px; border: 2px solid #333;
+            width: 100%; padding: 14px; margin-top: 8px; border-radius: 12px; border: 2px solid #333;
             background: #111; color: white; font-family: 'Ubuntu'; font-size: 16px; outline: none; box-sizing: border-box;
         }
         input:focus { border-color: #00adef; }
+
         #play-btn {
             width: 100%; padding: 16px; margin-top: 25px; border-radius: 12px; border: none;
             background: #00adef; color: white; font-weight: bold; font-size: 22px;
             cursor: pointer; transition: 0.3s;
         }
-        #play-btn:hover { background: #00ccff; transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,173,239,0.4); }
+        #play-btn:hover { background: #00ccff; transform: scale(1.03); box-shadow: 0 5px 20px rgba(0,173,239,0.5); }
 
-        /* --- IN-GAME HUD --- */
-        .ui-panel { position: absolute; bottom: 25px; width: 260px; z-index: 100; display: none; }
+        /* --- IN-GAME HUD (Based on your asd3.PNG) --- */
+        .ui-panel { position: absolute; bottom: 30px; width: 280px; z-index: 100; display: none; }
         .ui-visible { display: block; }
-        #left-ui { left: 25px; }
-        #right-ui { right: 25px; }
+        #left-ui { left: 30px; }
+        #right-ui { right: 30px; }
 
         .stat-bar { 
-            background: rgba(0, 0, 0, 0.9); border: 2px solid #333; border-radius: 30px;
-            margin: 8px 0; padding: 10px 18px; display: flex; justify-content: space-between;
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #333; border-radius: 40px;
+            margin: 10px 0; padding: 12px 20px; display: flex; justify-content: space-between;
             align-items: center; cursor: pointer; color: white; transition: 0.2s;
         }
-        .stat-bar:hover { border-color: #00adef; background: #000; }
-        .stat-val { color: #00adef; font-weight: 900; }
+        .stat-bar:hover { border-color: #00adef; background: #000; transform: translateX(5px); }
+        #right-ui .stat-bar:hover { transform: translateX(-5px); }
+        .stat-val { color: #00adef; font-weight: 900; font-family: monospace; font-size: 18px; }
 
         #central-hud {
-            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             text-align: center; display: none; width: 450px; pointer-events: none;
         }
-        .xp-container { width: 100%; height: 14px; background: rgba(0,0,0,0.5); border: 2px solid #222; border-radius: 10px; overflow: hidden; }
+        .xp-container { width: 100%; height: 16px; background: rgba(0,0,0,0.6); border: 2.5px solid #222; border-radius: 20px; overflow: hidden; }
         #xp-fill { width: 0%; height: 100%; background: #00adef; transition: width 0.3s; }
         
-        #game-mods { position: absolute; top: 20px; right: 25px; font-size: 14px; text-align: right; color: #aaa; }
-        .active-mod { color: #00adef; font-weight: bold; }
+        #game-info { position: absolute; top: 20px; right: 30px; font-weight: bold; font-size: 14px; text-shadow: 1px 1px #000; color: #888; }
+        .active-text { color: #00adef; }
     </style>
 </head>
 <body>
@@ -66,14 +71,14 @@
         <div class="lobby-box">
             <div class="input-group">
                 <label>Display Name</label>
-                <input type="text" id="playerName" placeholder="Player" maxlength="15">
+                <input type="text" id="playerName" placeholder="Taha" maxlength="15">
             </div>
             <div class="input-group">
-                <label>Select Region</label>
+                <label>Server Region</label>
                 <select id="region">
                     <option value="asia">Asia (Lahore)</option>
-                    <option value="eu">Europe (London)</option>
-                    <option value="us">US West</option>
+                    <option value="eu">Europe</option>
+                    <option value="us">US East</option>
                 </select>
             </div>
             <div class="input-group">
@@ -82,33 +87,33 @@
                     <option value="ffa">Free For All</option>
                 </select>
             </div>
-            <button id="play-btn">START GAME</button>
+            <button id="play-btn">ENTER GAME</button>
         </div>
     </div>
 
-    <div id="game-mods">
-        AUTO-FIRE [E]: <span id="e-status">OFF</span> | 
-        SPIN [C]: <span id="c-status">OFF</span>
+    <div id="game-info">
+        AUTO [E]: <span id="e-status">OFF</span> | SPIN [C]: <span id="c-status">OFF</span>
     </div>
 
     <div id="left-ui" class="ui-panel">
         <div class="stat-bar" onclick="lvlUp('reload')"><span>[1] Reload</span><span class="stat-val" id="val-reload">0</span></div>
         <div class="stat-bar" onclick="lvlUp('damage')"><span>[2] Damage</span><span class="stat-val" id="val-damage">0</span></div>
-        <div class="stat-bar" onclick="lvlUp('bSpeed')"><span>[3] B.Speed</span><span class="stat-val" id="val-bSpeed">0</span></div>
-        <div class="stat-bar" onclick="lvlUp('bHealth')"><span>[4] B.Health</span><span class="stat-val" id="val-bHealth">0</span></div>
+        <div class="stat-bar" onclick="lvlUp('bSpeed')"><span>[3] B. Speed</span><span class="stat-val" id="val-bSpeed">0</span></div>
+        <div class="stat-bar" onclick="lvlUp('bHealth')"><span>[4] B. Health</span><span class="stat-val" id="val-bHealth">0</span></div>
     </div>
 
     <div id="right-ui" class="ui-panel">
-        <div class="stat-bar" onclick="lvlUp('maxHP')"><span class="stat-val" id="val-maxHP">0</span><span>Max Health [5]</span></div>
+        <div class="stat-bar" onclick="lvlUp('maxHP')"><span class="stat-val" id="val-maxHP">0</span><span>Max HP [5]</span></div>
         <div class="stat-bar" onclick="lvlUp('regen')"><span class="stat-val" id="val-regen">0</span><span>Regen [6]</span></div>
         <div class="stat-bar" onclick="lvlUp('bodyDmg')"><span class="stat-val" id="val-bodyDmg">0</span><span>Body Dmg [7]</span></div>
         <div class="stat-bar" onclick="lvlUp('speed')"><span class="stat-val" id="val-speed">0</span><span>Speed [8]</span></div>
     </div>
 
     <div id="central-hud">
-        <div id="display-name" style="font-weight:900; font-size:22px; margin-bottom:5px; color:#fff; text-shadow: 2px 2px #000;"></div>
         <div class="xp-container"><div id="xp-fill"></div></div>
-        <div style="margin-top:8px; font-weight:bold;">LVL <span id="ui-lvl">1</span> | SCORE: <span id="ui-score">0</span> | PTS: <span id="ui-pts">0</span></div>
+        <div style="margin-top:10px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; font-size: 14px;">
+            LVL <span id="ui-lvl">1</span> | POINTS: <span id="ui-pts">0</span>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -118,21 +123,19 @@
         const ctx = canvas.getContext('2d');
         let gameActive = false;
         let shapes = [], bullets = [], keys = {};
-        const MAP_SIZE = 6000;
-        const MAP_HALF = 3000;
+        const MAP_SIZE = 5000;
+        const MAP_HALF = 2500;
 
         let p = {
-            x: 0, y: 0, vx: 0, vy: 0, angle: 0, name: "",
-            lvl: 1, xp: 0, next: 100, pts: 0, score: 0,
+            x: 0, y: 0, vx: 0, vy: 0, angle: 0,
+            lvl: 1, xp: 0, next: 100, pts: 0,
             hp: 100, maxHP: 100,
             stats: { reload:0, damage:0, bSpeed:0, bHealth:0, maxHP:0, regen:0, bodyDmg:0, speed:0 },
             radius: 25, cooldown: 0, autoF: false, autoS: false, isFiring: false
         };
 
-        // --- LOBBY LOGIC ---
+        // Play Button Click
         document.getElementById('play-btn').onclick = () => {
-            p.name = document.getElementById('playerName').value || "Player";
-            document.getElementById('display-name').innerText = p.name;
             document.getElementById('lobby').style.display = 'none';
             canvas.style.display = 'block';
             document.getElementById('central-hud').style.display = 'block';
@@ -142,16 +145,16 @@
 
         function init() {
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            for(let i=0; i<200; i++) spawnShape();
+            for(let i=0; i<150; i++) spawnShape();
             requestAnimationFrame(loop);
         }
 
         function spawnShape() {
-            let s = Math.random() > 0.6 ? 4 : 3;
+            let s = Math.random() > 0.7 ? 4 : 3;
             shapes.push({
                 x: (Math.random()-0.5)*MAP_SIZE, y: (Math.random()-0.5)*MAP_SIZE,
-                size: 22 + (s*6), hp: s*60, maxHP: s*60, xp: s*120, sides: s,
-                color: s==4 ? '#ff8a8a' : '#ffe869', angle: Math.random()*Math.PI, spin: (Math.random()-0.5)*0.02
+                size: 20 + (s*6), hp: s*60, maxHP: s*60, xp: s*100, sides: s,
+                color: s==4 ? '#ff8a8a' : '#ffe869', angle: Math.random()*6, spin: (Math.random()-0.5)*0.03
             });
         }
 
@@ -169,11 +172,10 @@
             panels.forEach(pan => p.pts > 0 ? pan.classList.add('ui-visible') : pan.classList.remove('ui-visible'));
             document.getElementById('ui-pts').innerText = p.pts;
             document.getElementById('ui-lvl').innerText = p.lvl;
-            document.getElementById('ui-score').innerText = Math.floor(p.score);
             document.getElementById('xp-fill').style.width = (p.xp/p.next*100) + "%";
         }
 
-        // --- INPUTS ---
+        // Input Handling
         window.onmousedown = () => p.isFiring = true;
         window.onmouseup = () => p.isFiring = false;
         window.onmousemove = e => p.angle = Math.atan2(e.clientY - canvas.height/2, e.clientX - canvas.width/2);
@@ -182,12 +184,12 @@
             if(e.key.toLowerCase() === 'e') {
                 p.autoF = !p.autoF;
                 document.getElementById('e-status').innerText = p.autoF ? "ON" : "OFF";
-                document.getElementById('e-status').className = p.autoF ? "active-mod" : "";
+                document.getElementById('e-status').className = p.autoF ? "active-text" : "";
             }
             if(e.key.toLowerCase() === 'c') {
                 p.autoS = !p.autoS;
                 document.getElementById('c-status').innerText = p.autoS ? "ON" : "OFF";
-                document.getElementById('c-status').className = p.autoS ? "active-mod" : "";
+                document.getElementById('c-status').className = p.autoS ? "active-text" : "";
             }
             const map = {'1':'reload','2':'damage','3':'bSpeed','4':'bHealth','5':'maxHP','6':'regen','7':'bodyDmg','8':'speed'};
             if(map[e.key]) lvlUp(map[e.key]);
@@ -197,41 +199,39 @@
         function update() {
             if(!gameActive) return;
 
-            // Movement Physics
-            let moveSpd = 0.65 + (p.stats.speed * 0.12);
-            if(keys['w']) p.vy -= moveSpd; if(keys['s']) p.vy += moveSpd;
-            if(keys['a']) p.vx -= moveSpd; if(keys['d']) p.vx += moveSpd;
-            p.vx *= 0.92; p.vy *= 0.92; p.x += p.vx; p.y += p.vy;
+            // Physics Movement
+            let mSpd = 0.65 + (p.stats.speed * 0.1);
+            if(keys['w']) p.vy -= mSpd; if(keys['s']) p.vy += mSpd;
+            if(keys['a']) p.vx -= mSpd; if(keys['d']) p.vx += mSpd;
+            p.vx *= 0.91; p.vy *= 0.91; p.x += p.vx; p.y += p.vy;
 
-            // Border Protection
+            // Map Bounds
             p.x = Math.max(-MAP_HALF + p.radius, Math.min(MAP_HALF - p.radius, p.x));
             p.y = Math.max(-MAP_HALF + p.radius, Math.min(MAP_HALF - p.radius, p.y));
 
-            // Auto-Spin
-            if(p.autoS) p.angle += 0.05;
+            // Auto Spin
+            if(p.autoS) p.angle += 0.04;
 
-            // Shooting Logic (Mouse OR Auto-Fire)
+            // Firing logic
             if(p.cooldown <= 0 && (p.isFiring || p.autoF)) {
                 bullets.push({
                     x: p.x, y: p.y, angle: p.angle, 
-                    life: 100 + (p.stats.bHealth * 10),
-                    dmg: 25 + (p.stats.damage * 10),
-                    v: 15 + (p.stats.bSpeed * 1.5)
+                    life: 100 + (p.stats.bHealth*10), dmg: 25 + (p.stats.damage*8),
+                    v: 14 + (p.stats.bSpeed*1.5)
                 });
                 p.cooldown = 22 - (p.stats.reload * 1.2);
             }
             p.cooldown--;
 
-            // Bullet Updates
+            // Bullet Collision
             bullets.forEach((b, bi) => {
                 b.x += Math.cos(b.angle)*b.v; b.y += Math.sin(b.angle)*b.v;
                 shapes.forEach((s, si) => {
                     if(Math.hypot(b.x-s.x, b.y-s.y) < s.size + 10) {
                         s.hp -= b.dmg; b.life = 0;
                         if(s.hp <= 0) { 
-                            p.score += s.xp; p.xp += s.xp; 
-                            shapes.splice(si, 1); spawnShape(); 
-                            if(p.xp >= p.next) { p.lvl++; p.pts++; p.xp=0; p.next = Math.floor(p.next * 1.35); }
+                            p.xp += s.xp; shapes.splice(si, 1); spawnShape(); 
+                            if(p.xp >= p.next) { p.lvl++; p.pts++; p.xp=0; p.next *= 1.3; }
                             updateHUD();
                         }
                     }
@@ -239,22 +239,22 @@
                 if(b.life-- <= 0) bullets.splice(bi, 1);
             });
 
-            // SOLID COLLISION: Tank vs Shapes
+            // SOLID COLLISION (Player vs Shapes)
             shapes.forEach(s => {
                 let dist = Math.hypot(p.x - s.x, p.y - s.y);
                 let minDist = p.radius + s.size;
                 if(dist < minDist) {
                     let angle = Math.atan2(p.y - s.y, p.x - s.x);
                     let push = minDist - dist;
-                    p.x += Math.cos(angle) * push; // Pushes tank out of shape
+                    p.x += Math.cos(angle) * push; // Pushes tank out
                     p.y += Math.sin(angle) * push;
-                    p.vx *= 0.4; p.vy *= 0.4; // Impact slow-down
+                    p.vx *= 0.5; p.vy *= 0.5;
                     p.hp -= 0.5; s.hp -= (2 + p.stats.bodyDmg);
-                    if(s.hp <= 0) { p.score += s.xp; p.xp += s.xp; shapes.splice(shapes.indexOf(s), 1); spawnShape(); updateHUD(); }
+                    if(s.hp <= 0) { p.xp += s.xp; shapes.splice(shapes.indexOf(s), 1); spawnShape(); updateHUD(); }
                 }
             });
-            
-            if(p.hp < p.maxHP) p.hp += 0.02 + (p.stats.regen * 0.06);
+
+            if(p.hp < p.maxHP) p.hp += 0.02 + (p.stats.regen * 0.05);
         }
 
         function loop() {
@@ -265,15 +265,8 @@
             ctx.save();
             ctx.translate(canvas.width/2 - p.x, canvas.height/2 - p.y);
 
-            // Gray Void (Outside Map)
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(-MAP_HALF-2000, -MAP_HALF-2000, MAP_SIZE+4000, MAP_SIZE+4000);
-
-            // White Map Area
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(-MAP_HALF, -MAP_HALF, MAP_SIZE, MAP_SIZE);
-
-            // Grid Lines
+            // Grid Background
+            ctx.fillStyle = '#fff'; ctx.fillRect(-MAP_HALF, -MAP_HALF, MAP_SIZE, MAP_SIZE);
             ctx.strokeStyle = '#eee'; ctx.lineWidth = 3;
             ctx.beginPath();
             for(let i=-MAP_HALF; i<=MAP_HALF; i+=150) {
@@ -282,11 +275,11 @@
             }
             ctx.stroke();
 
-            // Black Border
+            // Border
             ctx.strokeStyle = '#000'; ctx.lineWidth = 20;
             ctx.strokeRect(-MAP_HALF, -MAP_HALF, MAP_SIZE, MAP_SIZE);
 
-            // Shapes
+            // Shapes & Health Bars
             shapes.forEach(s => {
                 ctx.save();
                 ctx.translate(s.x, s.y); ctx.rotate(s.angle);
@@ -297,20 +290,20 @@
                 ctx.restore();
                 s.angle += s.spin;
                 if(s.hp < s.maxHP) {
-                    ctx.fillStyle = '#444'; ctx.fillRect(s.x-25, s.y+s.size+10, 50, 7);
-                    ctx.fillStyle = '#ff4444'; ctx.fillRect(s.x-25, s.y+s.size+10, 50*(s.hp/s.maxHP), 7);
+                    ctx.fillStyle = '#444'; ctx.fillRect(s.x-20, s.y+s.size+8, 40, 6);
+                    ctx.fillStyle = '#ff4444'; ctx.fillRect(s.x-20, s.y+s.size+8, 40*(s.hp/s.maxHP), 6);
                 }
             });
 
             // Bullets
             ctx.fillStyle = '#00adef'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-            bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
+            bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill(); ctx.stroke(); });
 
-            // Tank
+            // Tank Rendering
             ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
             ctx.fillStyle = '#999'; ctx.strokeStyle = '#000'; ctx.lineWidth = 5;
             ctx.strokeRect(0, -14, 55, 28); ctx.fillRect(0, -14, 55, 28); // Barrel
-            ctx.fillStyle = '#00adef'; ctx.beginPath(); ctx.arc(0,0,p.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#00adef'; ctx.beginPath(); ctx.arc(0,0,p.radius, 0, 7); ctx.fill(); ctx.stroke();
             ctx.restore();
 
             // Player Health Bar
@@ -322,7 +315,7 @@
             ctx.restore();
             requestAnimationFrame(loop);
         }
-
+        
         window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     </script>
 </body>
